@@ -5,88 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pro Darts Math Trainer</title>
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-        body {
-            margin: 0; padding: 0;
-            background-color: #000000; color: #ecf0f1;
-            font-family: 'Segoe UI', sans-serif;
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-        }
-        .brand-bar {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 15px; background: #111; border-bottom: 1px solid #333;
-        }
-        .logo-placeholder { font-weight: 900; font-style: italic; font-size: 1.2rem; letter-spacing: -1px; }
-        .pdc { color: #004a99; }
-        .target { color: #e61e2a; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: none; }
+        body { margin: 0; padding: 0; background-color: #000; color: #ecf0f1; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        header {
-            display: flex; justify-content: center; padding: 10px;
-            background: #1a1a1a; border-bottom: 2px solid #333; position: relative;
-        }
-        #total-left { 
-            font-size: 2.2rem; font-weight: bold; color: #f1c40f; 
-            border: 1px solid #444; border-radius: 8px; padding: 2px 40px;
-            cursor: pointer; background: #000; min-width: 150px; text-align: center;
-        }
-        .game-shot-anim { color: #fff !important; background: #d4af37 !important; border-color: #fff !important; }
-        .incorrect-anim { color: #fff !important; background: #c0392b !important; border-color: #fff !important; font-size: 1.2rem !important; }
+        header { height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1a1a1a; border-bottom: 3px solid #004a99; }
+        .score-container { display: flex; align-items: center; gap: 12px; }
+        #total-left { font-size: 2.2rem; font-weight: bold; color: #f1c40f; border: 2px solid #444; border-radius: 8px; padding: 4px 35px; background: #000; min-width: 140px; text-align: center; cursor: pointer; }
+        #total-left:active { border-color: #f1c40f; background: #111; }
+        
+        #live-remain-box { width: 65px; height: 50px; background: rgba(40,40,40,0.3); border: 1px solid rgba(80,80,80,0.2); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+        #live-remain-box span { font-size: 1.1rem; font-weight: bold; color: #888; filter: blur(5px); }
+        #live-remain-box.revealed { background: rgba(0,74,153,0.4); border-color: #004a99; }
+        #live-remain-box.revealed span { filter: blur(0); color: #fff; }
+        #live-remain-label { font-size: 0.5rem; color: #555; position: absolute; bottom: 2px; }
 
-        #refresh-board {
-            position: absolute; right: 10px; top: 15px; background: #333; color: #fff;
-            border: 1px solid #555; padding: 5px 10px; border-radius: 4px; font-size: 0.7rem;
-        }
+        .controls-row { display: flex; gap: 10px; margin-top: 8px; }
+        button.tool-btn { background: #333; color: #fff; border: 1px solid #555; padding: 7px 14px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; min-width: 130px; }
+        button.co-highlight { background: #004a99 !important; border-color: #3498db !important; }
 
-        #turn-log { display: flex; justify-content: center; gap: 8px; padding: 10px; background: #222; }
-        .dart-slot {
-            background: #333; padding: 5px 10px; border-radius: 4px;
-            min-width: 65px; text-align: center; font-weight: bold; font-size: 1rem;
-            border: 1px solid #004a99; color: #fff;
-        }
+        #turn-log { height: 50px; display: flex; justify-content: center; gap: 10px; padding: 8px; background: #222; }
+        .dart-slot { background: #333; padding: 0 10px; border-radius: 4px; min-width: 70px; text-align: center; font-weight: bold; font-size: 1.1rem; border: 1px solid #004a99; color: #fff; line-height: 34px; }
 
-        main {
-            flex-grow: 1; display: flex; align-items: center; justify-content: center;
-            position: relative; padding: 10px; overflow: hidden; background: #000;
-        }
+        main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; background: #000; overflow: hidden; }
         #canvas-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-        canvas { touch-action: none; background: #000; }
 
-        footer {
-            background: #1a1a1a; border-top: 3px solid #004a99; padding: 10px;
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
-        }
-        #throwBtn {
-            width: 100%; max-width: 400px; padding: 16px; background: #27ae60; color: white;
-            border: none; border-radius: 8px; font-weight: bold; font-size: 1.1rem;
-            box-shadow: 0 4px 0 #1e8449;
-        }
-        #throwBtn:disabled { background: #34495e; box-shadow: none; opacity: 0.5; }
+        footer { min-height: 110px; background: #1a1a1a; border-top: 2px solid #004a99; padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #throwBtn { width: 100%; max-width: 350px; padding: 18px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1.2rem; box-shadow: 0 4px #1e8449; }
+        #throwBtn:active { transform: translateY(2px); box-shadow: 0 2px #1e8449; }
 
-        #keypad-container {
-            display: none; width: 100%; max-width: 400px; flex-direction: column; gap: 5px;
-        }
+        #keypad-container { display: none; width: 100%; max-width: 480px; align-items: center; gap: 15px; }
         #keypad-container.active { display: flex; }
-        .display-row { display: flex; gap: 5px; margin-bottom: 5px; }
-        #calc-display {
-            flex-grow: 1; background: #000; color: #2ecc71; padding: 10px;
-            font-family: monospace; font-size: 1.4rem; text-align: right; border-radius: 4px; border: 1px solid #444;
-        }
-        .key-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-        .key { background: #333; border: none; color: white; padding: 15px; font-size: 1.2rem; border-radius: 4px; }
-        .key.submit { background: #004a99; grid-column: span 2; }
-        .key.clear { background: #c0392b; }
+        .display-wrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        #calc-display { background: rgba(0,0,0,0.9); color: #2ecc71; width: 90px; height: 55px; font-family: 'Courier New', monospace; font-size: 2rem; font-weight: bold; text-align: center; line-height: 55px; border-radius: 6px; border: 2px solid #2ecc71; }
+        .key-grid { display: grid; grid-template-columns: repeat(5, 1fr) 1.8fr; grid-template-rows: repeat(2, 48px); gap: 8px; flex: 1; }
+        .key { background: #333; border: none; color: white; font-size: 1.3rem; border-radius: 5px; font-weight: bold; display: flex; align-items: center; justify-content: center; border-bottom: 3px solid #111; }
+        .key:active { transform: translateY(2px); border-bottom: 1px solid #111; }
+        .key.submit { background: #004a99; grid-column: 6; grid-row: 1 / span 2; font-size: 1.1rem; text-transform: uppercase; border-bottom-color: #002d5e; }
+        .key.clear { background: #c0392b; font-size: 0.9rem; border-bottom-color: #87281e; }
+
+        .game-shot-anim { color: #fff !important; background: #d4af37 !important; border-color: #fff !important; }
+        .incorrect-anim { color: #fff !important; background: #c0392b !important; border-color: #fff !important; }
     </style>
 </head>
 <body>
 
-    <div class="brand-bar">
-        <div class="logo-placeholder pdc">PDC</div>
-        <div class="logo-placeholder target">TARGET</div>
-    </div>
-
     <header>
-        <div id="total-left" onclick="editStartingScore()">501</div>
-        <button id="refresh-board" onclick="init()">FIX BOARD</button>
+        <div class="score-container">
+            <div id="total-left" onclick="setCustomScore()">501</div>
+            <div id="live-remain-box" onclick="toggleRef()">
+                <span id="ref-score">-</span>
+                <div id="live-remain-label">LEFT</div>
+            </div>
+        </div>
+        <div class="controls-row">
+            <button id="co-btn" class="tool-btn" onclick="toggleRandomMode()">RANDOM CHECK OUT</button>
+            <button id="difficulty-toggle" class="tool-btn" onclick="cycleDifficulty()">SKILL: BEGINNER</button>
+        </div>
     </header>
 
     <div id="turn-log">
@@ -96,24 +70,20 @@
     </div>
 
     <main>
-        <div id="canvas-container">
-            <canvas id="dartBoard"></canvas>
-        </div>
+        <div id="canvas-container"><canvas id="dartBoard"></canvas></div>
     </main>
 
     <footer>
         <button id="throwBtn">RELEASE DART</button>
         <div id="keypad-container">
-            <div class="display-row">
+            <div class="display-wrap">
                 <div id="calc-display">0</div>
-                <button class="key clear" onclick="keyPress('C')">C</button>
+                <button class="key clear" onclick="keyPress('C')" style="width: 100%; height: 35px;">CLR</button>
             </div>
             <div class="key-grid">
-                <button class="key" onclick="keyPress('1')">1</button><button class="key" onclick="keyPress('2')">2</button><button class="key" onclick="keyPress('3')">3</button>
-                <button class="key" onclick="keyPress('4')">4</button><button class="key" onclick="keyPress('5')">5</button><button class="key" onclick="keyPress('6')">6</button>
-                <button class="key" onclick="keyPress('7')">7</button><button class="key" onclick="keyPress('8')">8</button><button class="key" onclick="keyPress('9')">9</button>
-                <button class="key" onclick="keyPress('0')">0</button>
-                <button class="key submit" onclick="keyPress('S')">CONFIRM</button>
+                <button class="key" onclick="keyPress('1')">1</button><button class="key" onclick="keyPress('2')">2</button><button class="key" onclick="keyPress('3')">3</button><button class="key" onclick="keyPress('4')">4</button><button class="key" onclick="keyPress('5')">5</button>
+                <button class="key submit" onclick="keyPress('S')">ENT</button>
+                <button class="key" onclick="keyPress('6')">6</button><button class="key" onclick="keyPress('7')">7</button><button class="key" onclick="keyPress('8')">8</button><button class="key" onclick="keyPress('9')">9</button><button class="key" onclick="keyPress('0')">0</button>
             </div>
         </div>
     </footer>
@@ -122,74 +92,78 @@
         const canvas = document.getElementById('dartBoard');
         const ctx = canvas.getContext('2d');
         const boardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
-        const SIZE = 600;
-        const CX = 300, CY = 300;
-        const AIM_RADIUS = 90;
-
-        let totalRemaining = 501;
-        let dartsThrown = 0;
-        let turnTotal = 0;
-        let aimPoint = { x: CX, y: CY - 100 };
-        let dartsOnBoard = [];
-        let currentInput = "";
-        let isLocked = false;
+        const SIZE = 600, CX = 300, CY = 300;
+        
+        let totalRemaining = 501, dartsThrown = 0, turnTotal = 0, dartsOnBoard = [], currentInput = "", isLocked = false, isRandomMode = false;
+        let aimPoint = { x: CX, y: CY - 100 }, difficultyIdx = 0;
+        const diffSettings = [{ label: "BEGINNER", radius: 90 }, { label: "LEAGUE", radius: 45 }, { label: "PRO", radius: 0 }];
 
         function init() {
             const container = document.getElementById('canvas-container');
             const dim = Math.min(container.clientWidth, container.clientHeight);
-            canvas.width = dim;
-            canvas.height = dim;
+            canvas.width = dim; canvas.height = dim;
             render();
+        }
+
+        function setCustomScore() {
+            const val = prompt("Set Custom Score (2-999):", totalRemaining);
+            const num = parseInt(val);
+            if (!isNaN(num) && num > 1 && num < 1000) { totalRemaining = num; document.getElementById('total-left').innerText = totalRemaining; resetTurn(); }
+        }
+
+        function toggleRef() { document.getElementById('live-remain-box').classList.toggle('revealed'); }
+
+        function toggleRandomMode() {
+            isRandomMode = !isRandomMode;
+            const btn = document.getElementById('co-btn');
+            if (isRandomMode) { btn.classList.add('co-highlight'); randomCheckout(); } 
+            else { btn.classList.remove('co-highlight'); totalRemaining = 501; document.getElementById('total-left').innerText = totalRemaining; resetTurn(); }
+        }
+
+        function cycleDifficulty() {
+            difficultyIdx = (difficultyIdx + 1) % 3;
+            document.getElementById('difficulty-toggle').innerText = `SKILL: ${diffSettings[difficultyIdx].label}`;
+            render();
+        }
+
+        function randomCheckout() {
+            totalRemaining = Math.floor(Math.random() * (170 - 2 + 1)) + 2;
+            document.getElementById('total-left').innerText = totalRemaining;
+            resetTurn();
         }
 
         function render() {
             const scale = canvas.width / SIZE;
             ctx.setTransform(scale, 0, 0, scale, 0, 0);
             ctx.clearRect(0, 0, SIZE, SIZE);
-
-            // Black Surround
-            ctx.beginPath(); ctx.arc(CX, CY, 295, 0, Math.PI * 2);
-            ctx.fillStyle = "#111"; ctx.fill();
-
-            // Segments
+            ctx.beginPath(); ctx.arc(CX, CY, 295, 0, Math.PI * 2); ctx.fillStyle = "#111"; ctx.fill();
             for (let i = 0; i < 20; i++) {
                 const angle = (i * Math.PI / 10) - (Math.PI / 2) - (Math.PI / 20);
                 const end = angle + (Math.PI / 10);
-                
-                ctx.beginPath(); ctx.moveTo(CX, CY);
-                ctx.arc(CX, CY, 260, angle, end);
-                ctx.fillStyle = (i % 2 === 0) ? "#000" : "#f1e5ac";
-                ctx.fill();
-
+                ctx.beginPath(); ctx.moveTo(CX, CY); ctx.arc(CX, CY, 260, angle, end);
+                ctx.fillStyle = (i % 2 === 0) ? "#000" : "#f1e5ac"; ctx.fill();
                 drawRing(260, 240, angle, end, (i % 2 === 0) ? "#e61e2a" : "#27ae60");
                 drawRing(170, 150, angle, end, (i % 2 === 0) ? "#e61e2a" : "#27ae60");
-
-                ctx.save();
-                ctx.translate(CX, CY);
-                ctx.rotate(angle + (Math.PI / 20) + Math.PI / 2);
-                ctx.fillStyle = "white";
-                ctx.font = "bold 24px Arial";
-                ctx.textAlign = "center";
-                ctx.fillText(boardNumbers[i], 0, -272);
-                ctx.restore();
+                ctx.save(); ctx.translate(CX, CY); ctx.rotate(angle + (Math.PI / 20) + Math.PI / 2);
+                ctx.fillStyle = "white"; ctx.font = "bold 24px Arial"; ctx.textAlign = "center"; ctx.fillText(boardNumbers[i], 0, -272); ctx.restore();
             }
-
-            // Bulls
             ctx.beginPath(); ctx.arc(CX, CY, 22, 0, Math.PI * 2); ctx.fillStyle = "#27ae60"; ctx.fill();
             ctx.beginPath(); ctx.arc(CX, CY, 10, 0, Math.PI * 2); ctx.fillStyle = "#e61e2a"; ctx.fill();
-
-            // Aiming Circle
+            
+            const rad = diffSettings[difficultyIdx].radius;
             if (dartsThrown < 3 && !isLocked) {
-                ctx.beginPath(); ctx.arc(aimPoint.x, aimPoint.y, AIM_RADIUS, 0, Math.PI * 2);
-                ctx.strokeStyle = "#004a99"; ctx.lineWidth = 3; ctx.setLineDash([8, 8]); ctx.stroke();
-                ctx.setLineDash([]);
+                if (rad > 0) {
+                    ctx.beginPath(); ctx.arc(aimPoint.x, aimPoint.y, rad, 0, Math.PI * 2);
+                    ctx.strokeStyle = "#004a99"; ctx.lineWidth = 2; ctx.setLineDash([5,5]); ctx.stroke();
+                } else {
+                    ctx.setLineDash([]); ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(aimPoint.x-15, aimPoint.y); ctx.lineTo(aimPoint.x+15, aimPoint.y);
+                    ctx.moveTo(aimPoint.x, aimPoint.y-15); ctx.lineTo(aimPoint.x, aimPoint.y+15); ctx.stroke();
+                }
             }
-
-            // Darts
             dartsOnBoard.forEach(d => {
                 ctx.beginPath(); ctx.arc(d.x, d.y, 8, 0, Math.PI * 2);
-                ctx.fillStyle = "#fff"; ctx.fill();
-                ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = "#fff"; ctx.fill(); ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.stroke();
             });
         }
 
@@ -213,70 +187,42 @@
 
         document.getElementById('throwBtn').onclick = function() {
             if (isLocked || dartsThrown >= 3) return;
-            
-            let fx, fy;
-            if (dartsThrown === 0 && Math.random() < 0.5) {
-                fx = aimPoint.x; fy = aimPoint.y;
-            } else {
-                const r = Math.random() * AIM_RADIUS;
-                const a = Math.random() * Math.PI * 2;
-                fx = aimPoint.x + Math.cos(a) * r;
-                fy = aimPoint.y + Math.sin(a) * r;
-            }
-
-            const res = getScore(fx, fy);
-            dartsOnBoard.push({x: fx, y: fy});
-            dartsThrown++;
-            turnTotal += res.v;
+            let fx, fy; const rad = diffSettings[difficultyIdx].radius;
+            if (rad === 0) { fx = aimPoint.x; fy = aimPoint.y; } 
+            else { const r = Math.random() * rad, a = Math.random() * Math.PI * 2; fx = aimPoint.x + Math.cos(a) * r; fy = aimPoint.y + Math.sin(a) * r; }
+            const res = getScore(fx, fy); dartsOnBoard.push({x: fx, y: fy}); dartsThrown++; turnTotal += res.v;
             document.getElementById(`d${dartsThrown}`).innerText = res.n;
+            document.getElementById('ref-score').innerText = totalRemaining - turnTotal;
             render();
-
             const left = totalRemaining - turnTotal;
-            if (left < 0 || left === 1 || (left === 0 && !res.d)) {
-                doFeedback("BUST!", totalRemaining, 1500);
-            } else if (left === 0 && res.d) {
-                doFeedback("GAME SHOT", 501, 2500, true);
-            } else if (dartsThrown === 3) {
-                this.style.display = 'none';
-                document.getElementById('keypad-container').classList.add('active');
-            }
+            if (left < 0 || left === 1 || (left === 0 && !res.d)) { doFeedback("BUST!", totalRemaining, 1500); } 
+            else if (left === 0 && res.d) { doFeedback("GAME SHOT", isRandomMode ? "RANDOM" : 501, 2500, true); } 
+            else if (dartsThrown === 3) { this.style.display = 'none'; document.getElementById('keypad-container').classList.add('active'); }
         };
 
-        function doFeedback(msg, resetVal, time, win = false) {
-            isLocked = true;
-            const el = document.getElementById('total-left');
-            el.innerText = msg;
+        function doFeedback(msg, nextVal, time, win = false) {
+            isLocked = true; const el = document.getElementById('total-left'); el.innerText = msg;
             el.className = win ? 'game-shot-anim' : 'incorrect-anim';
             setTimeout(() => {
-                totalRemaining = resetVal;
-                el.innerText = totalRemaining;
-                el.className = '';
-                isLocked = false;
-                resetTurn();
+                if (nextVal === "RANDOM") randomCheckout(); else { totalRemaining = nextVal; el.innerText = totalRemaining; }
+                el.className = ''; isLocked = false; resetTurn();
             }, time);
         }
 
         function keyPress(v) {
             if (v === 'C') currentInput = "";
             else if (v === 'S') {
-                const guess = parseInt(currentInput);
-                if (guess === turnTotal) {
-                    totalRemaining -= turnTotal;
-                    document.getElementById('total-left').innerText = totalRemaining;
-                    resetTurn();
-                } else {
-                    const actual = turnTotal;
-                    totalRemaining -= actual;
-                    doFeedback(`WRONG: ${actual}`, totalRemaining, 2000);
-                }
-            } else if (currentInput.length < 3) {
-                currentInput += v;
-            }
+                if (currentInput === "") return;
+                if (parseInt(currentInput) === turnTotal) { totalRemaining -= turnTotal; document.getElementById('total-left').innerText = totalRemaining; resetTurn(); } 
+                else { doFeedback(`WRONG: ${turnTotal}`, totalRemaining - turnTotal, 2000); }
+            } else if (currentInput.length < 3) { currentInput += v; }
             document.getElementById('calc-display').innerText = currentInput || "0";
         }
 
         function resetTurn() {
             dartsThrown = 0; turnTotal = 0; dartsOnBoard = []; currentInput = "";
+            document.getElementById('ref-score').innerText = "-";
+            document.getElementById('live-remain-box').classList.remove('revealed');
             document.getElementById('calc-display').innerText = "0";
             document.getElementById('keypad-container').classList.remove('active');
             document.getElementById('throwBtn').style.display = 'block';
@@ -285,21 +231,17 @@
         }
 
         function getScore(x, y) {
-            const dx = x - CX, dy = y - CY;
-            const dist = Math.sqrt(dx*dx + dy*dy);
+            const dx = x - CX, dy = y - CY, dist = Math.sqrt(dx*dx + dy*dy);
             if (dist > 260) return { v: 0, n: "0", d: false };
             if (dist < 10) return { v: 50, n: "DB", d: true };
             if (dist < 22) return { v: 25, n: "B", d: false };
-            let a = Math.atan2(dy, dx) + (Math.PI/2) + (Math.PI/20);
-            if (a < 0) a += Math.PI*2;
+            let a = Math.atan2(dy, dx) + (Math.PI/2) + (Math.PI/20); if (a < 0) a += Math.PI*2;
             const num = boardNumbers[Math.floor((a / (Math.PI*2)) * 20) % 20];
             if (dist >= 240 && dist <= 260) return { v: num*2, n: "D"+num, d: true };
             if (dist >= 150 && dist <= 170) return { v: num*3, n: "T"+num, d: false };
             return { v: num, n: num.toString(), d: false };
         }
-
-        window.onload = init;
-        window.onresize = init;
+        window.onload = init; window.onresize = init;
     </script>
 </body>
 </html>
