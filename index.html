@@ -2,11 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Pro Darts Math Trainer</title>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: none; }
-        body { margin: 0; padding: 0; background-color: #000; color: #ecf0f1; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { 
+            margin: 0; padding: 0; background-color: #000; color: #ecf0f1; 
+            font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; 
+            height: 100vh; overflow: hidden; position: fixed; width: 100%;
+        }
         header { height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1a1a1a; border-bottom: 3px solid #004a99; padding: 5px; flex-shrink: 0; }
         .score-row { display: flex; align-items: center; gap: 10px; width: 100%; justify-content: center; padding: 0 10px; }
         .side-box { width: 95px; height: 60px; background: #222; border: 1px solid #444; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
@@ -27,7 +31,7 @@
         .dart-slot { background: #222; width: 65px; border-radius: 4px; text-align: center; font-weight: bold; font-size: 1rem; color: #fff; line-height: 34px; border: 1px solid #333; }
         main { flex: 1; position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         #canvas-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: absolute; }
-        canvas { max-width: 100%; max-height: 100%; }
+        canvas { max-width: 100%; max-height: 100%; touch-action: none; }
         footer { min-height: 125px; background: #1a1a1a; border-top: 2px solid #004a99; padding: 10px; display: flex; flex-direction: column; align-items: center; width: 100%; flex-shrink: 0; }
         #throwBtn { width: 100%; max-width: 350px; padding: 18px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
         #bot-status { display: none; color: #e61e2a; font-weight: bold; animation: pulse 1s infinite; margin: 10px; font-size: 1.2rem; }
@@ -85,51 +89,42 @@
         let isMatch = false, isLocked = false, diffIdx = 0, isAutoCO = false, aim = { x: 300, y: 150 };
         const diffs = [{l:"BEG", r:80}, {l:"PRO", r:35}, {l:"MAX", r:0}];
 
+        const CO_TABLE = {
+            170:["T20","T20","BULL"],167:["T20","T19","BULL"],164:["T20","T18","BULL"],161:["T20","T17","BULL"],160:["T20","T20","D20"],
+            158:["T20","T20","D19"],157:["T20","T19","D20"],156:["T20","T20","D18"],155:["T20","T19","D19"],154:["T20","T18","D20"],
+            153:["T20","T19","D18"],152:["T20","T20","D16"],151:["T20","T17","D20"],150:["T20","T18","D18"],149:["T20","T19","D16"],
+            100:["T20","D20"],90:["18","D18"],80:["T20","D10"],70:["18","D8"],60:["20","D20"],50:["BULL"],40:["D20"],32:["D16"],16:["D8"]
+        };
+
         function init() {
-            canvas = document.getElementById('dartBoard');
-            ctx = canvas.getContext('2d');
-            resize();
-            window.addEventListener('resize', resize);
-            updateDisplay();
+            canvas = document.getElementById('dartBoard'); ctx = canvas.getContext('2d');
+            canvas.addEventListener('pointerdown', handlePointer);
+            canvas.addEventListener('pointermove', (e) => { if(e.buttons > 0) handlePointer(e); });
+            resize(); window.addEventListener('resize', resize); updateDisplay();
+        }
+
+        function handlePointer(e) {
+            if(isLocked || dartsThrown >= 3) return;
+            const r = canvas.getBoundingClientRect();
+            aim.x = (e.clientX - r.left) * (600 / r.width);
+            aim.y = (e.clientY - r.top) * (600 / r.height);
+            render();
         }
 
         function resize() {
             const container = document.getElementById('canvas-container');
             const size = Math.min(container.clientWidth, container.clientHeight);
-            canvas.width = size; canvas.height = size;
-            render();
+            canvas.width = size; canvas.height = size; render();
         }
 
-        function getPDCPath(s, dLeft) {
-            if (s > 170 || [169, 168, 166, 165, 163, 162, 159].includes(s)) return "NO CHECKOUT";
-            if (s <= 1) return "-";
-            const routes = { 170: ["T20", "T20", "BULL"], 167: ["T20", "T19", "BULL"], 164: ["T20", "T18", "BULL"], 161: ["T20", "T17", "BULL"], 160: ["T20", "T20", "D20"], 135: ["T20", "T15", "D15"], 132: ["BULL", "BULL", "D16"], 124: ["T20", "D16", "D16"], 121: ["T20", "T11", "D14"], 100: ["T20", "D20"], 98: ["T20", "D19"], 96: ["T20", "D18"], 94: ["T18", "D20"], 88: ["T16", "D20"], 82: ["T14", "D20"], 80: ["T20", "D10"], 50: ["BULL"], 40: ["D20"], 32: ["D16"] };
-            if (routes[s]) return routes[s].slice(0, dLeft).join(" ");
-            if (s <= 40 && s % 2 === 0) return "D" + (s / 2);
-            if (s <= 40 && s % 2 !== 0) return "S1 D" + ((s - 1) / 2);
-            if (s <= 60) return (s % 2 === 0) ? ("S" + (s - 40) + " D20") : ("S" + (s - 32) + " D16");
-            if (s > 60 && s < 100) {
-                let target = (s > 80) ? 20 : 19;
-                let rem = s - (target * 3);
-                if (rem > 1 && rem <= 40 && rem % 2 === 0) return "T" + target + " D" + (rem / 2);
-            }
-            return "T20 SETUP";
-        }
-
-        function getBotTarget(rem) {
-            if (rem <= 40 && rem % 2 === 0) return { n: rem/2, m: 2 };
-            if (rem === 50) return { n: 25, m: 2 };
-            if (rem > 60) return { n: 20, m: 3 };
-            if (rem % 2 !== 0) return { n: (rem > 32) ? rem-32 : 1, m: 1 };
-            return { n: rem/2, m: 2 };
-        }
-
-        function getCoords(n, m) {
-            if (n === 25) return { x: 300, y: 300 };
-            const idx = boardNumbers.indexOf(n);
-            const a = (idx * Math.PI / 10) - (Math.PI / 2);
-            let d = 180; if (m === 2) d = 250; if (m === 3) d = 160;
-            return { x: 300 + Math.cos(a) * d, y: 300 + Math.sin(a) * d };
+        function getLiveCO(rem, dLeft) {
+            if (rem > 170 || [169, 168, 166, 165, 163, 162, 159].includes(rem)) return "SETUP";
+            if (rem <= 1) return "-";
+            let path = CO_TABLE[rem];
+            if (path && path.length <= dLeft) return path.join(" ");
+            if (rem <= 40 && rem % 2 === 0) return "D" + (rem/2);
+            if (rem <= 60 && rem > 40) return (rem-40) + " D20";
+            return "SETUP";
         }
 
         function render() {
@@ -149,12 +144,10 @@
             ctx.beginPath(); ctx.arc(300,300,20,0,Math.PI*2); ctx.fillStyle="#27ae60"; ctx.fill();
             ctx.beginPath(); ctx.arc(300,300,10,0,Math.PI*2); ctx.fillStyle="#e61e2a"; ctx.fill();
             if(!isLocked && dartsThrown < 3){
-                if(diffs[diffIdx].r > 0){
-                    ctx.strokeStyle = "rgba(52, 152, 219, 0.7)"; ctx.lineWidth = 3;
-                    ctx.beginPath(); ctx.arc(aim.x, aim.y, diffs[diffIdx].r, 0, Math.PI*2); ctx.stroke();
-                }
-                ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 2; ctx.beginPath();
-                ctx.moveTo(aim.x-20, aim.y); ctx.lineTo(aim.x+20, aim.y); ctx.moveTo(aim.x, aim.y-20); ctx.lineTo(aim.x, aim.y+20); ctx.stroke();
+                ctx.strokeStyle = "rgba(52, 152, 219, 0.7)"; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(aim.x, aim.y, diffs[diffIdx].r, 0, Math.PI*2); ctx.stroke();
+                ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 3; ctx.beginPath();
+                ctx.moveTo(aim.x-25, aim.y); ctx.lineTo(aim.x+25, aim.y); ctx.moveTo(aim.x, aim.y-25); ctx.lineTo(aim.x, aim.y+25); ctx.stroke();
             }
             dartsOnBoard.forEach(d => {
                 ctx.beginPath(); ctx.arc(d.x, d.y, 8, 0, Math.PI*2); ctx.fillStyle = d.isBot ? "#e61e2a" : "#fff"; ctx.fill(); ctx.strokeStyle="#000"; ctx.stroke();
@@ -168,16 +161,15 @@
             let rx = aim.x, ry = aim.y, rad = diffs[diffIdx].r;
             if(rad > 0){ let d = Math.random()*rad, a = Math.random()*Math.PI*2; rx += Math.cos(a)*d; ry += Math.sin(a)*d; }
             let s = getScore(rx, ry); dartsOnBoard.push({x:rx, y:ry, isBot:false}); dartsThrown++; turnTotal += s.v;
-            document.getElementById(`d${dartsThrown}`).innerText = s.n; updateDisplay(); render();
+            document.getElementById(`d${dartsThrown}`).innerText = s.n; 
+            updateDisplay(); render();
+            
             let rem = userScore - turnTotal;
             if(rem < 0 || rem === 1 || (rem === 0 && !s.d)){ feedback("BUST", "YOU"); }
             else if(rem === 0 && s.d){ feedback("GAME SHOT!", "YOU", true); }
             else if(dartsThrown === 3){
-                // FIX: Update score immediately before Bot starts
-                userScore -= turnTotal;
-                updateDisplay(); 
-                if(isMatch) startBotTurn(); 
-                else { document.getElementById('throwBtn').style.display='none'; document.getElementById('keypad-container').classList.add('active'); isLocked=true; }
+                if(isMatch) { userScore -= turnTotal; updateDisplay(); startBotTurn(); } 
+                else { isLocked = true; document.getElementById('throwBtn').style.display = 'none'; document.getElementById('keypad-container').classList.add('active'); }
             }
         }
 
@@ -191,60 +183,57 @@
             let n = boardNumbers[Math.floor((a/(Math.PI*2))*20)%20];
             if(d > 240) return {v:n*2, n:"D"+n, d:true};
             if(d > 150 && d < 170) return {v:n*3, n:"T"+n, d:false};
-            return {v:n, n:"S"+n, d:false};
+            return {v:n, n:""+n, d:false};
         }
 
         async function startBotTurn() {
-            isLocked = true;
-            document.getElementById('throwBtn').style.display = 'none';
-            document.getElementById('bot-status').style.display = 'block';
-            await new Promise(r => setTimeout(r, 600)); // Brief pause for realism
-            dartsOnBoard = []; 
-            document.querySelectorAll('.dart-slot').forEach(s => s.innerText = "-");
-            render();
+            isLocked = true; document.getElementById('throwBtn').style.display = 'none'; document.getElementById('bot-status').style.display = 'block';
+            await new Promise(r => setTimeout(r, 600));
+            dartsOnBoard = []; document.querySelectorAll('.dart-slot').forEach(s => s.innerText = "-"); render();
             let bVisit = 0;
             for(let i=1; i<=3; i++){
                 await new Promise(r => setTimeout(r, 800));
-                let t = getBotTarget(botScore - bVisit);
-                let c = getCoords(t.n, t.m);
+                let rem = botScore - bVisit;
+                let tx, ty, targetRing = "S";
+                
+                if(rem > 60) { let idx=boardNumbers.indexOf(20); let a=(idx*Math.PI/10)-(Math.PI/2); tx=300+Math.cos(a)*160; ty=300+Math.sin(a)*160; }
+                else if(rem <= 40 && rem % 2 === 0) { // DOUBLE CHECKOUT
+                    let idx=boardNumbers.indexOf(rem/2); let a=(idx*Math.PI/10)-(Math.PI/2); tx=300+Math.cos(a)*250; ty=300+Math.sin(a)*250; targetRing="D";
+                } else if(rem <= 60 && rem > 1) { // SETUP SHOT
+                    let setupVal = (rem % 2 !== 0) ? 1 : Math.min(rem-2, 20);
+                    let idx=boardNumbers.indexOf(setupVal); let a=(idx*Math.PI/10)-(Math.PI/2); tx=300+Math.cos(a)*200; ty=300+Math.sin(a)*200;
+                } else { tx=300; ty=150; }
+
                 let spread = (diffIdx === 0) ? 55 : (diffIdx === 1) ? 30 : 10;
-                let bx = c.x + (Math.random()*spread*2-spread), by = c.y + (Math.random()*spread*2-spread);
+                let bx = tx + (Math.random()*spread*2-spread), by = ty + (Math.random()*spread*2-spread);
                 let s = getScore(bx, by);
                 if(botScore - (bVisit + s.v) < 0 || botScore - (bVisit + s.v) === 1) { feedback("BUST", "BOT"); return; }
                 bVisit += s.v; dartsOnBoard.push({x:bx, y:by, isBot:true}); document.getElementById(`d${i}`).innerText = s.n; render();
                 if(botScore - bVisit === 0 && s.d) { feedback("GAME SHOT!", "BOT", true); return; }
+                if(botScore - bVisit === 0 && !s.d) { feedback("BUST", "BOT"); return; }
             }
-            botScore -= bVisit;
-            setTimeout(endTurn, 1000);
+            botScore -= bVisit; setTimeout(endTurn, 1000);
         }
 
         function feedback(msg, who, win = false){
-            isLocked = true;
-            const el = (who === "YOU") ? document.getElementById('total-left') : document.getElementById('bot-left');
-            if(who === "YOU" && win) userScore = 0; // Ensure 0 is shown on Game Shot
-            updateDisplay();
+            isLocked = true; const el = (who === "YOU") ? document.getElementById('total-left') : document.getElementById('bot-left');
+            if(who === "YOU" && win) userScore = 0; updateDisplay();
             el.innerText = msg; el.className = win ? 'score-display gameshot' : 'score-display err';
             setTimeout(() => {
                 el.className = 'score-display';
-                if(win) resetGame();
-                else if(isMatch && who === "YOU") startBotTurn();
-                else endTurn();
+                if(win) resetGame(); else if(isMatch && who === "YOU") startBotTurn(); else endTurn();
             }, 1200);
         }
 
         function endTurn(){
             isLocked = false; dartsThrown = 0; turnTotal = 0; dartsOnBoard = []; currentInput = "";
-            document.getElementById('throwBtn').style.display = 'block';
-            document.getElementById('bot-status').style.display = 'none';
-            document.getElementById('keypad-container').classList.remove('active');
-            document.getElementById('calc-display').innerText = "0";
-            document.querySelectorAll('.dart-slot').forEach(s => s.innerText = "-");
-            updateDisplay(); render();
+            document.getElementById('throwBtn').style.display = 'block'; document.getElementById('bot-status').style.display = 'none';
+            document.getElementById('keypad-container').classList.remove('active'); document.getElementById('calc-display').innerText = "0";
+            document.querySelectorAll('.dart-slot').forEach(s => s.innerText = "-"); updateDisplay(); render();
         }
 
         function toggleMode(){
-            isMatch = !isMatch; isAutoCO = false;
-            document.getElementById('action-btn').classList.remove('auto-active');
+            isMatch = !isMatch; isAutoCO = false; document.getElementById('action-btn').classList.remove('auto-active');
             document.getElementById('mode-toggle').innerText = isMatch ? "VS BOT" : "TRAINING";
             document.getElementById('mode-toggle').classList.toggle('active-mode');
             document.getElementById('co-box').style.display = isMatch ? 'none' : 'flex';
@@ -254,39 +243,40 @@
         }
 
         function resetGame(){ userScore = 501; botScore = 501; if(isAutoCO && !isMatch) setRandomTarget(); else endTurn(); }
-        function setRandomTarget() { userScore = Math.floor(Math.random()*121)+40; endTurn(); }
-        function handleRandomCOButton() { if(isMatch) { resetGame(); return; } isAutoCO = !isAutoCO; const btn = document.getElementById('action-btn'); if(isAutoCO) { btn.classList.add('auto-active'); setRandomTarget(); } else { btn.classList.remove('auto-active'); resetGame(); } }
+        function setRandomTarget() { userScore = Math.floor(Math.random() * 130) + 41; endTurn(); }
+
+        function handleRandomCOButton() { 
+            if(isMatch) { resetGame(); return; } 
+            isAutoCO = !isAutoCO; const btn = document.getElementById('action-btn'); 
+            if(isAutoCO) { btn.classList.add('auto-active'); setRandomTarget(); } 
+            else { btn.classList.remove('auto-active'); resetGame(); } 
+        }
 
         function updateDisplay() {
-            const rem = userScore - turnTotal;
-            document.getElementById('ref-score').innerText = isMatch ? userScore : rem;
+            const currentRem = userScore - turnTotal;
+            document.getElementById('ref-score').innerText = currentRem;
             document.getElementById('total-left').innerText = userScore;
             document.getElementById('bot-left').innerText = botScore;
-            if(!isMatch) document.getElementById('co-guide').innerText = getPDCPath(rem, 3 - dartsThrown);
+            if(!isMatch) document.getElementById('co-guide').innerText = getLiveCO(currentRem, 3 - dartsThrown);
         }
 
         function cycleDiff(){ diffIdx = (diffIdx + 1) % 3; document.getElementById('diff-toggle').innerText = "SKILL: " + diffs[diffIdx].l; render(); }
+        
         function keyIn(v){
             if(v === 'C') currentInput = "";
             else if(v === 'S'){
-                if(parseInt(currentInput) === turnTotal){ 
-                    if(isAutoCO && userScore === 0) setRandomTarget(); 
-                    else endTurn();
+                if(parseInt(currentInput) === turnTotal) { 
+                    userScore -= turnTotal; 
+                    if(isAutoCO && userScore === 0) { setRandomTarget(); } else { endTurn(); }
+                } else { 
+                    document.getElementById('total-left').classList.add('err'); 
+                    setTimeout(()=>document.getElementById('total-left').classList.remove('err'), 800); 
                 }
-                else { document.getElementById('total-left').classList.add('err'); setTimeout(()=>document.getElementById('total-left').classList.remove('err'), 800); }
             } else if(currentInput.length < 3) currentInput += v;
             document.getElementById('calc-display').innerText = currentInput || "0";
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            init();
-            canvas.addEventListener('pointerdown', e => {
-                if(isLocked) return;
-                const r = canvas.getBoundingClientRect();
-                aim = { x: (e.clientX-r.left)*(600/r.width), y: (e.clientY-r.top)*(600/r.height) };
-                render();
-            });
-        });
+        window.onload = init;
     </script>
 </body>
 </html>
