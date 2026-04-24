@@ -26,6 +26,7 @@
         .controls-row { display: flex; justify-content: center; gap: 8px; margin-top: 10px; width: 100%; padding: 0 10px; }
         .tool-btn { background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; flex: 1; max-width: 110px; font-weight: bold; }
         .active-mode { background: #004a99 !important; border-color: #3498db !important; }
+        .pressure-active { background: #c0392b !important; border-color: #ff4d4d !important; color: #fff !important; animation: pulse-red 1s infinite; box-shadow: 0 0 15px #c0392b; }
         .auto-active { border-color: #f1c40f !important; color: #f1c40f !important; background: #443a00 !important; box-shadow: 0 0 12px #f1c40f; }
         #turn-log { height: 50px; display: flex; justify-content: center; gap: 8px; padding: 8px; background: #111; flex-shrink: 0; }
         .dart-slot { background: #222; width: 65px; border-radius: 4px; text-align: center; font-weight: bold; font-size: 1rem; color: #fff; line-height: 34px; border: 1px solid #333; }
@@ -39,11 +40,12 @@
         #keypad-container.active { display: flex; }
         #calc-display { background: #000; color: #2ecc71; width: 75px; height: 45px; font-size: 1.6rem; text-align: center; line-height: 45px; border: 2px solid #2ecc71; border-radius: 6px; }
         .key-grid { display: grid; grid-template-columns: repeat(5, 1fr) 1.2fr; gap: 5px; flex: 1; }
-        .key { background: #333; color: #fff; border: none; height: 42px; border-radius: 4px; font-size: 1.1rem; border-bottom: 2px solid #111; }
+        .key { background: #333; color: #fff; border: none; height: 42px; border-radius: 4px; font-size: 1.1rem; border-bottom: 2px solid #111; transition: none; }
         .key.submit { background: #004a99; grid-column: 6; grid-row: 1 / span 2; height: 89px; }
         .err { background: #c0392b !important; color: #fff !important; }
         .gameshot { background: #27ae60 !important; color: #fff !important; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        @keyframes pulse-red { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
     </style>
 </head>
 <body>
@@ -57,7 +59,7 @@
         <div class="controls-row">
             <button class="tool-btn" id="mode-toggle" onclick="toggleMode()">TRAINING</button>
             <button class="tool-btn" id="diff-toggle" onclick="cycleDiff()">SKILL: BEG</button>
-            <button class="tool-btn" id="action-btn" onclick="handleRandomCOButton()">RANDOM CO</button>
+            <button class="tool-btn" id="action-btn" onclick="handleModeAction()">RANDOM CO</button>
         </div>
     </header>
     <div id="turn-log">
@@ -72,12 +74,12 @@
         <div id="keypad-container">
             <div style="display:flex; flex-direction:column; gap:5px;">
                 <div id="calc-display">0</div>
-                <button class="key" style="background:#c0392b; font-size:0.7rem; height:38px" onclick="keyIn('C')">CLR</button>
+                <button class="key" id="key-CLR" style="background:#c0392b; font-size:0.7rem; height:38px" onclick="keyIn('C')">CLR</button>
             </div>
             <div class="key-grid">
-                <button class="key" onclick="keyIn('1')">1</button><button class="key" onclick="keyIn('2')">2</button><button class="key" onclick="keyIn('3')">3</button><button class="key" onclick="keyIn('4')">4</button><button class="key" onclick="keyIn('5')">5</button>
-                <button class="key submit" onclick="keyIn('S')">ENT</button>
-                <button class="key" onclick="keyIn('6')">6</button><button class="key" onclick="keyIn('7')">7</button><button class="key" onclick="keyIn('8')">8</button><button class="key" onclick="keyIn('9')">9</button><button class="key" onclick="keyIn('0')">0</button>
+                <button class="key" id="key-1" onclick="keyIn('1')">1</button><button class="key" id="key-2" onclick="keyIn('2')">2</button><button class="key" id="key-3" onclick="keyIn('3')">3</button><button class="key" id="key-4" onclick="keyIn('4')">4</button><button class="key" id="key-5" onclick="keyIn('5')">5</button>
+                <button class="key submit" id="key-ENT" onclick="keyIn('S')">ENT</button>
+                <button class="key" id="key-6" onclick="keyIn('6')">6</button><button class="key" id="key-7" onclick="keyIn('7')">7</button><button class="key" id="key-8" onclick="keyIn('8')">8</button><button class="key" id="key-9" onclick="keyIn('9')">9</button><button class="key" id="key-0" onclick="keyIn('0')">0</button>
             </div>
         </div>
     </footer>
@@ -86,15 +88,54 @@
         let canvas, ctx;
         const boardNumbers = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
         let userScore = 501, botScore = 501, dartsThrown = 0, turnTotal = 0, dartsOnBoard = [], currentInput = "";
-        let isMatch = false, isLocked = false, diffIdx = 0, isAutoCO = false, aim = { x: 300, y: 150 };
-        const diffs = [{l:"BEG", r:80}, {l:"PRO", r:35}, {l:"MAX", r:0}];
+        let isMatch = false, isLocked = false, diffIdx = 0, isAutoCO = false, isPressure = false, aim = { x: 300, y: 150 };
+        let pressureTimer = null, timeLeft = 10;
+        
+        const diffs = [
+            {l:"BEG", r:80, botWobble: 65}, 
+            {l:"PRO", r:52.5, botWobble: 38}, 
+            {l:"MAX", r:0,  botWobble: 8}
+        ];
 
-        const CO_TABLE = {
-            170:["T20","T20","BULL"],167:["T20","T19","BULL"],164:["T20","T18","BULL"],161:["T20","T17","BULL"],160:["T20","T20","D20"],
-            158:["T20","T20","D19"],157:["T20","T19","D20"],156:["T20","T20","D18"],155:["T20","T19","D19"],154:["T20","T18","D20"],
-            153:["T20","T19","D18"],152:["T20","T20","D16"],151:["T20","T17","D20"],150:["T20","T18","D18"],149:["T20","T19","D16"],
-            100:["T20","D20"],90:["18","D18"],80:["T20","D10"],70:["18","D8"],60:["20","D20"],50:["BULL"],40:["D20"],32:["D16"],16:["D8"]
+        const PDC_FIXED = {
+            170:["T20","T20","BULL"], 167:["T20","T19","BULL"], 164:["T20","T18","BULL"], 161:["T20","T17","BULL"],
+            160:["T20","T20","D20"], 158:["T20","T20","D19"], 157:["T20","T19","D20"], 156:["T20","T20","D18"],
+            155:["T20","T19","D19"], 154:["T20","18","D20"], 153:["T20","T19","D18"], 152:["T20","T20","D16"],
+            151:["T20","T17","D20"], 150:["T20","T18","D18"], 149:["T20","T19","D16"], 148:["T20","16","D20"],
+            147:["T20","17","D18"], 146:["T20","18","D16"], 145:["T20","15","D20"], 144:["T20","T20","D12"],
+            143:["T20","T17","D16"], 142:["T20","T14","D20"], 141:["T20","15","D18"], 140:["T20","16","D16"],
+            102:["T20", "10", "D16"], 55:["15", "D20"]
         };
+
+        function getLiveCO(ref, darts) {
+            if (ref > 170 || [169, 168, 166, 165, 163, 162, 159].includes(ref)) return "SETUP";
+            if (ref <= 1) return "-";
+            if (ref === 50) return "BULL";
+            if (ref <= 40 && ref % 2 === 0) return "D" + (ref / 2);
+            if (PDC_FIXED[ref] && PDC_FIXED[ref].length <= darts) return PDC_FIXED[ref].join(" ");
+            if (darts >= 2) {
+                let rem = ref - 60;
+                if (rem >= 2) { let sub = getLiveCO(rem, darts - 1); if (sub !== "SETUP") return "T20 " + sub; }
+                rem = ref - 57;
+                if (rem >= 2) { let sub = getLiveCO(rem, darts - 1); if (sub !== "SETUP") return "T19 " + sub; }
+                for (let i = 20; i >= 1; i--) {
+                    if (ref - (i * 3) >= 2 && (ref - (i * 3)) <= 40 && (ref - (i * 3)) % 2 === 0) return "T" + i + " D" + ((ref - (i * 3)) / 2);
+                    if (ref - i >= 2 && (ref - i) <= 40 && (ref - i) % 2 === 0) return i + " D" + ((ref - i) / 2);
+                }
+            }
+            if (darts > 0) {
+                const favs = [40, 32, 36, 50];
+                for (let f of favs) {
+                    let need = ref - f;
+                    if (need > 0 && need <= 60) {
+                        let label = f === 50 ? "BULL" : "D" + (f / 2);
+                        if (need % 3 === 0) return "T" + (need / 3) + " (L " + label + ")";
+                        if (need <= 20) return need + " (L " + label + ")";
+                    }
+                }
+            }
+            return "SETUP";
+        }
 
         function init() {
             canvas = document.getElementById('dartBoard'); ctx = canvas.getContext('2d');
@@ -115,16 +156,6 @@
             const container = document.getElementById('canvas-container');
             const size = Math.min(container.clientWidth, container.clientHeight);
             canvas.width = size; canvas.height = size; render();
-        }
-
-        function getLiveCO(rem, dLeft) {
-            if (rem > 170 || [169, 168, 166, 165, 163, 162, 159].includes(rem)) return "SETUP";
-            if (rem <= 1) return "-";
-            let path = CO_TABLE[rem];
-            if (path && path.length <= dLeft) return path.join(" ");
-            if (rem <= 40 && rem % 2 === 0) return "D" + (rem/2);
-            if (rem <= 60 && rem > 40) return (rem-40) + " D20";
-            return "SETUP";
         }
 
         function render() {
@@ -158,19 +189,19 @@
 
         function userThrow() {
             if(isLocked || dartsThrown >= 3) return;
+            stopPressure();
             let rx = aim.x, ry = aim.y, rad = diffs[diffIdx].r;
             if(rad > 0){ let d = Math.random()*rad, a = Math.random()*Math.PI*2; rx += Math.cos(a)*d; ry += Math.sin(a)*d; }
             let s = getScore(rx, ry); dartsOnBoard.push({x:rx, y:ry, isBot:false}); dartsThrown++; turnTotal += s.v;
             document.getElementById(`d${dartsThrown}`).innerText = s.n; 
             updateDisplay(); render();
-            
             let rem = userScore - turnTotal;
             if(rem < 0 || rem === 1 || (rem === 0 && !s.d)){ feedback("BUST", "YOU"); }
             else if(rem === 0 && s.d){ feedback("GAME SHOT!", "YOU", true); }
             else if(dartsThrown === 3){
                 if(isMatch) { userScore -= turnTotal; updateDisplay(); startBotTurn(); } 
                 else { isLocked = true; document.getElementById('throwBtn').style.display = 'none'; document.getElementById('keypad-container').classList.add('active'); }
-            }
+            } else if(isPressure) { startPressure(); }
         }
 
         function getScore(x, y) {
@@ -187,35 +218,34 @@
         }
 
         async function startBotTurn() {
+            stopPressure();
             isLocked = true; document.getElementById('throwBtn').style.display = 'none'; document.getElementById('bot-status').style.display = 'block';
             await new Promise(r => setTimeout(r, 600));
             dartsOnBoard = []; document.querySelectorAll('.dart-slot').forEach(s => s.innerText = "-"); render();
             let bVisit = 0;
+            let currentWobble = diffs[diffIdx].botWobble;
             for(let i=1; i<=3; i++){
                 await new Promise(r => setTimeout(r, 800));
                 let rem = botScore - bVisit;
-                let tx, ty, targetRing = "S";
-                
+                let tx, ty;
                 if(rem > 60) { let idx=boardNumbers.indexOf(20); let a=(idx*Math.PI/10)-(Math.PI/2); tx=300+Math.cos(a)*160; ty=300+Math.sin(a)*160; }
-                else if(rem <= 40 && rem % 2 === 0) { // DOUBLE CHECKOUT
-                    let idx=boardNumbers.indexOf(rem/2); let a=(idx*Math.PI/10)-(Math.PI/2); tx=300+Math.cos(a)*250; ty=300+Math.sin(a)*250; targetRing="D";
-                } else if(rem <= 60 && rem > 1) { // SETUP SHOT
-                    let setupVal = (rem % 2 !== 0) ? 1 : Math.min(rem-2, 20);
-                    let idx=boardNumbers.indexOf(setupVal); let a=(idx*Math.PI/10)-(Math.PI/2); tx=300+Math.cos(a)*200; ty=300+Math.sin(a)*200;
-                } else { tx=300; ty=150; }
-
-                let spread = (diffIdx === 0) ? 55 : (diffIdx === 1) ? 30 : 10;
-                let bx = tx + (Math.random()*spread*2-spread), by = ty + (Math.random()*spread*2-spread);
+                else if(rem <= 40 && rem % 2 === 0) { let idx=boardNumbers.indexOf(rem/2); let a=(idx*Math.PI/10)-(Math.PI/2); tx=300+Math.cos(a)*250; ty=300+Math.sin(a)*250; }
+                else if(rem <= 60 && rem > 1) { let setupVal = (rem % 2 !== 0) ? 1 : Math.min(rem-2, 20); let idx=boardNumbers.indexOf(setupVal); let a=(idx*Math.PI/10)-(Math.PI/2); tx=300+Math.cos(a)*200; ty=300+Math.sin(a)*200; }
+                else { tx=300; ty=150; }
+                let bx = tx + (Math.random() * currentWobble * 2 - currentWobble);
+                let by = ty + (Math.random() * currentWobble * 2 - currentWobble);
                 let s = getScore(bx, by);
-                if(botScore - (bVisit + s.v) < 0 || botScore - (bVisit + s.v) === 1) { feedback("BUST", "BOT"); return; }
+                if(botScore - (bVisit + s.v) < 0 || botScore - (bVisit + s.v) === 1 || (botScore - (bVisit + s.v) === 0 && !s.d)) { 
+                    feedback("BUST", "BOT"); return; 
+                }
                 bVisit += s.v; dartsOnBoard.push({x:bx, y:by, isBot:true}); document.getElementById(`d${i}`).innerText = s.n; render();
                 if(botScore - bVisit === 0 && s.d) { feedback("GAME SHOT!", "BOT", true); return; }
-                if(botScore - bVisit === 0 && !s.d) { feedback("BUST", "BOT"); return; }
             }
             botScore -= bVisit; setTimeout(endTurn, 1000);
         }
 
         function feedback(msg, who, win = false){
+            stopPressure();
             isLocked = true; const el = (who === "YOU") ? document.getElementById('total-left') : document.getElementById('bot-left');
             if(who === "YOU" && win) userScore = 0; updateDisplay();
             el.innerText = msg; el.className = win ? 'score-display gameshot' : 'score-display err';
@@ -225,44 +255,98 @@
             }, 1200);
         }
 
+        function startPressure() {
+            if(!isMatch || !isPressure) return;
+            timeLeft = 10;
+            const btn = document.getElementById('action-btn');
+            btn.innerText = `TIMEOUT: ${timeLeft}`;
+            clearInterval(pressureTimer);
+            pressureTimer = setInterval(() => {
+                timeLeft--;
+                btn.innerText = `TIMEOUT: ${timeLeft}`;
+                if(timeLeft <= 0) {
+                    clearInterval(pressureTimer);
+                    feedback("TIMEOUT LOSS", "YOU", false);
+                    resetGame();
+                }
+            }, 1000);
+        }
+
+        function stopPressure() {
+            clearInterval(pressureTimer);
+            if(isMatch && isPressure) document.getElementById('action-btn').innerText = "PRESSURE ON";
+        }
+
         function endTurn(){
             isLocked = false; dartsThrown = 0; turnTotal = 0; dartsOnBoard = []; currentInput = "";
             document.getElementById('throwBtn').style.display = 'block'; document.getElementById('bot-status').style.display = 'none';
             document.getElementById('keypad-container').classList.remove('active'); document.getElementById('calc-display').innerText = "0";
             document.querySelectorAll('.dart-slot').forEach(s => s.innerText = "-"); updateDisplay(); render();
+            if(isMatch && isPressure) startPressure();
         }
 
         function toggleMode(){
-            isMatch = !isMatch; isAutoCO = false; document.getElementById('action-btn').classList.remove('auto-active');
+            isMatch = !isMatch; isAutoCO = false; isPressure = false;
+            stopPressure();
             document.getElementById('mode-toggle').innerText = isMatch ? "VS BOT" : "TRAINING";
             document.getElementById('mode-toggle').classList.toggle('active-mode');
             document.getElementById('co-box').style.display = isMatch ? 'none' : 'flex';
             document.getElementById('bot-left-box').style.display = isMatch ? 'flex' : 'none';
-            document.getElementById('action-btn').innerText = isMatch ? "RESET" : "RANDOM CO";
+            
+            const btn = document.getElementById('action-btn');
+            btn.className = "tool-btn";
+            btn.innerText = isMatch ? "PRESSURE OFF" : "RANDOM CO";
             resetGame();
         }
 
-        function resetGame(){ userScore = 501; botScore = 501; if(isAutoCO && !isMatch) setRandomTarget(); else endTurn(); }
+        function resetGame(){ 
+            userScore = 501; botScore = 501; 
+            stopPressure();
+            if(isAutoCO && !isMatch) setRandomTarget(); 
+            else endTurn(); 
+        }
+        
         function setRandomTarget() { userScore = Math.floor(Math.random() * 130) + 41; endTurn(); }
 
-        function handleRandomCOButton() { 
-            if(isMatch) { resetGame(); return; } 
-            isAutoCO = !isAutoCO; const btn = document.getElementById('action-btn'); 
-            if(isAutoCO) { btn.classList.add('auto-active'); setRandomTarget(); } 
-            else { btn.classList.remove('auto-active'); resetGame(); } 
+        function handleModeAction() { 
+            if(isMatch) { 
+                isPressure = !isPressure;
+                const btn = document.getElementById('action-btn');
+                if(isPressure) {
+                    btn.classList.add('pressure-active');
+                    btn.innerText = "PRESSURE ON";
+                    startPressure();
+                } else {
+                    btn.classList.remove('pressure-active');
+                    btn.innerText = "PRESSURE OFF";
+                    stopPressure();
+                }
+            } else {
+                isAutoCO = !isAutoCO; 
+                const btn = document.getElementById('action-btn'); 
+                if(isAutoCO) { btn.classList.add('auto-active'); setRandomTarget(); } 
+                else { btn.classList.remove('auto-active'); resetGame(); } 
+            }
         }
 
         function updateDisplay() {
             const currentRem = userScore - turnTotal;
+            const dartsLeft = 3 - dartsThrown;
             document.getElementById('ref-score').innerText = currentRem;
             document.getElementById('total-left').innerText = userScore;
             document.getElementById('bot-left').innerText = botScore;
-            if(!isMatch) document.getElementById('co-guide').innerText = getLiveCO(currentRem, 3 - dartsThrown);
+            if(!isMatch) { document.getElementById('co-guide').innerText = getLiveCO(currentRem, dartsLeft); }
         }
 
         function cycleDiff(){ diffIdx = (diffIdx + 1) % 3; document.getElementById('diff-toggle').innerText = "SKILL: " + diffs[diffIdx].l; render(); }
         
         function keyIn(v){
+            let keyId = v === 'S' ? 'key-ENT' : v === 'C' ? 'key-CLR' : 'key-' + v;
+            let el = document.getElementById(keyId);
+            if(el) {
+                el.style.background = "#fff"; el.style.color = "#000";
+                setTimeout(() => { el.style.background = ""; el.style.color = ""; }, 100);
+            }
             if(v === 'C') currentInput = "";
             else if(v === 'S'){
                 if(parseInt(currentInput) === turnTotal) { 
@@ -270,6 +354,7 @@
                     if(isAutoCO && userScore === 0) { setRandomTarget(); } else { endTurn(); }
                 } else { 
                     document.getElementById('total-left').classList.add('err'); 
+                    currentInput = ""; 
                     setTimeout(()=>document.getElementById('total-left').classList.remove('err'), 800); 
                 }
             } else if(currentInput.length < 3) currentInput += v;
